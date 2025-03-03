@@ -80,8 +80,8 @@ export const generateCustomScripts = async (
   days: string[],
   platformPosts: { [key: string]: number }
 ): Promise<any> => {
-  // const endpoint = "generate_custom_scripts";
-  const endpoint = "generate_custom_scripts_v3";
+  const endpoint = "generate_custom_scripts";
+  // const endpoint = "generate_custom_scripts_v3";
   const formData = new FormData();
   formData.append("file", file);
 
