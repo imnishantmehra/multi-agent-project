@@ -53,8 +53,6 @@ export function ContentModificationModal({
         regeneratedResponse = await regenerateSubContent(modifications);
       }
 
-      console.log("regeneratedResponse", regeneratedResponse);
-
       if (regeneratedResponse?.status === "success") {
         let updatedContent = regeneratedResponse?.week_content || "";
 
@@ -70,10 +68,19 @@ export function ContentModificationModal({
         } else if (contentType === "sub") {
           let updatedContent = regeneratedResponse?.subcontent || "";
 
+          updatedContent = updatedContent
+            .trim()
+            .replace(/^["']?\s*week:\s*/i, "");
+
           if (typeof updatedContent === "string") {
             try {
-              const parsedContent = JSON.parse(updatedContent);
-              updatedContent = parsedContent?.subcontent || updatedContent;
+              if (
+                updatedContent.startsWith("{") ||
+                updatedContent.startsWith("[")
+              ) {
+                const parsedContent = JSON.parse(updatedContent);
+                updatedContent = parsedContent?.subcontent || updatedContent;
+              }
             } catch (error) {
               console.error("Error parsing JSON:", error);
             }
@@ -85,7 +92,6 @@ export function ContentModificationModal({
             .trim();
 
           const mainContent1 = mainContent.replace(/[{}]/g, "").trim();
-          console.log("mainContent:", mainContent1);
 
           finalUpdatedText = `${mainContent1}`;
         }

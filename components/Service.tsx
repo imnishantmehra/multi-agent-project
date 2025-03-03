@@ -1,7 +1,7 @@
 import axios, { AxiosResponse } from "axios";
 
 const API_BASE_URL =
-  "https://9573-2405-201-3009-d88a-3998-7279-1e3d-aabb.ngrok-free.app";
+  "https://10c7-2405-201-3009-d88a-2d9f-9aee-8507-a7f2.ngrok-free.app";
 
 /**
  * Generic service for making API calls
@@ -80,7 +80,8 @@ export const generateCustomScripts = async (
   days: string[],
   platformPosts: { [key: string]: number }
 ): Promise<any> => {
-  const endpoint = "generate_custom_scripts";
+  // const endpoint = "generate_custom_scripts";
+  const endpoint = "generate_custom_scripts_v3";
   const formData = new FormData();
   formData.append("file", file);
 

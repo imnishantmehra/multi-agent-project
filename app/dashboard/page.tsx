@@ -245,18 +245,25 @@ export default function Dashboard() {
                 image: "",
               }));
 
-            const platformResults =
-              customScripts.results[platform.toLowerCase()] || [];
+            const platformKey = platform.toLowerCase();
+            let platformResults =
+              customScripts.results?.[platformKey] ?? customScripts;
+
+            platformResults = Array.isArray(platformResults)
+              ? platformResults
+              : [platformResults];
+
+            console.log("Processed platformResults:", platformResults);
 
             platformResults
               .filter((item: any) =>
-                item.week_day.startsWith(`Week ${week} - ${day}`)
+                item.week_day.includes(`Week ${week} - ${day}`)
               )
               .forEach((item: any, index: number) => {
                 if (index < newTimeSlots[week][day][platform].length) {
                   newTimeSlots[week][day][platform][index] = {
                     time: `${9 + index * 3}:00`,
-                    content: item.content || "",
+                    content: item.content || "No content available",
                     image: item.image || "",
                   };
                 }
@@ -294,12 +301,12 @@ export default function Dashboard() {
         }
 
         setTimeSlots(updatedTimeSlots);
-      } else {
-        console.warn("Failed to generate custom scripts:", customScripts);
-        alert("Failed to generate custom scripts.");
       }
     } catch (error) {
-      console.error("Error during /generate_custom_scripts API call:", error);
+      console.error(
+        "Error during /generate_custom_scripts_v3 API call:",
+        error
+      );
       alert(
         "An error occurred while generating custom scripts. Please try again."
       );
