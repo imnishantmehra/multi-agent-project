@@ -204,8 +204,148 @@ export default function Dashboard() {
     }
   };
 
+  // const handleFinalizePlan = async () => {
+  //   setIsRegeneratingPlan(true);
+  //   if (!sourceFile) {
+  //     alert("Please upload a source file before finalizing the plan.");
+  //     setIsRegeneratingPlan(false);
+  //     return;
+  //   }
+
+  //   const platformPosts: { [key: string]: number } = {};
+  //   activePlatforms.forEach((platform) => {
+  //     platformPosts[platform] = Number(defaultPosts) || 1;
+  //   });
+
+  //   try {
+  //     const customScripts = await generateCustomScripts(
+  //       sourceFile,
+  //       Number.parseInt(numberOfWeeks),
+  //       activeDays,
+  //       platformPosts
+  //     );
+
+  //     const newTimeSlots: Record<
+  //       number,
+  //       Record<string, Record<string, TimeSlot[]>>
+  //     > = {};
+
+  //     for (let week = 1; week <= parseInt(numberOfWeeks); week++) {
+  //       newTimeSlots[week] = {};
+
+  //       for (const day of activeDays) {
+  //         newTimeSlots[week][day] = {};
+
+  //         for (const platform of activePlatforms) {
+  //           newTimeSlots[week][day][platform] = Array(parseInt(defaultPosts))
+  //             .fill(null)
+  //             .map((_, index) => ({
+  //               time: `${9 + index * 3}:00`,
+  //               content: "",
+  //               image: "",
+  //             }));
+
+  //           // const platformResults =
+  //           //   customScripts.results[platform.toLowerCase()] || [];
+  //           const resultsByPlatform = customScripts.reduce((acc, item) => {
+  //             const platform = item.platform.toLowerCase();
+  //             if (!acc[platform]) acc[platform] = [];
+  //             acc[platform].push(item);
+  //             return acc;
+  //           }, {});
+
+  //           console.log("Processed Results:", resultsByPlatform);
+
+  //           // Now use the processed structure
+  //           const platformResults =
+  //             resultsByPlatform[platform.toLowerCase()] || [];
+
+  //           console.log("Final platformResults before error:", platformResults);
+
+  //           if (!resultsByPlatform[platform.toLowerCase()]) {
+  //             console.warn(`Missing data for platform: ${platform}`);
+  //             continue;
+  //           }
+  //           if (!platformResults || platformResults.length === 0) {
+  //             console.warn(`No posts available for ${platform}`);
+  //             continue;
+  //           }
+
+  //           platformResults
+  //             .filter((item: any) =>
+  //               item.week_day.startsWith(`Week ${week} - ${day}`)
+  //             )
+  //             .forEach((item: any, index: number) => {
+  //               if (index < newTimeSlots[week][day][platform].length) {
+  //                 newTimeSlots[week][day][platform][index] = {
+  //                   time: `${9 + index * 3}:00`,
+  //                   content: item.content || "",
+  //                   image: item.image || "",
+  //                 };
+  //               }
+  //             });
+  //         }
+  //       }
+  //     }
+
+  //     setTimeSlots(newTimeSlots);
+
+  //     if (customScripts?.status === "success") {
+  //       const updatedTimeSlots = { ...newTimeSlots };
+
+  //       for (const platform in customScripts.results) {
+  //         const normalizedPlatform = platform.toLowerCase();
+  //         const platformContent = customScripts.results[normalizedPlatform];
+
+  //         platformContent.forEach((post: any, index: number) => {
+  //           const { week_day, content } = post;
+  //           const [weekText, dayText] = week_day.split(" - ");
+  //           const week = parseInt(weekText.replace("Week ", ""));
+  //           const day = dayText.trim().toLowerCase();
+  //           if (
+  //             updatedTimeSlots[week] &&
+  //             updatedTimeSlots[week][day] &&
+  //             updatedTimeSlots[week][day][normalizedPlatform]
+  //           ) {
+  //             updatedTimeSlots[week][day][normalizedPlatform][index] = {
+  //               time: `${9 + index * 3}:00`,
+  //               content: content || "",
+  //               image: "",
+  //             };
+  //           }
+  //         });
+  //       }
+
+  //       setTimeSlots(updatedTimeSlots);
+  //     } else {
+  //       console.warn("Failed to generate custom scripts:", customScripts);
+  //       alert("Failed to generate custom scripts.");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error during /generate_custom_scripts API call:", error);
+  //     alert(
+  //       "An error occurred while generating custom scripts. Please try again."
+  //     );
+  //   }
+
+  //   setIsRegeneratingPlan(false);
+
+  //   setCurrentStep(3);
+  //   setIsContentIdeasOpen(false);
+
+  //   setTimeout(() => {
+  //     if (stepThreeRef.current) {
+  //       stepThreeRef.current.scrollIntoView({
+  //         behavior: "smooth",
+  //         block: "start",
+  //       });
+  //     }
+  //   }, 1000);
+  // };
+
   const handleFinalizePlan = async () => {
     setIsRegeneratingPlan(true);
+
     if (!sourceFile) {
       alert("Please upload a source file before finalizing the plan.");
       setIsRegeneratingPlan(false);
@@ -224,6 +364,35 @@ export default function Dashboard() {
         activeDays,
         platformPosts
       );
+
+      if (
+        !customScripts ||
+        (Array.isArray(customScripts) && customScripts.length === 0)
+      ) {
+        console.warn(
+          "Invalid response from generateCustomScripts:",
+          customScripts
+        );
+        alert("Failed to generate custom scripts.");
+        return;
+      }
+
+      if (!Array.isArray(customScripts) && customScripts.status !== "success") {
+        console.warn("Failed to generate custom scripts:", customScripts);
+        alert("Failed to generate custom scripts.");
+        return;
+      }
+
+      const resultsByPlatform = Array.isArray(customScripts)
+        ? customScripts.reduce<Record<string, any[]>>((acc, item) => {
+            const platform = item.platform.toLowerCase();
+            if (!acc[platform]) acc[platform] = [];
+            acc[platform].push(item);
+            return acc;
+          }, {})
+        : customScripts.results;
+
+      console.log("Processed Results:", resultsByPlatform);
 
       const newTimeSlots: Record<
         number,
@@ -246,7 +415,12 @@ export default function Dashboard() {
               }));
 
             const platformResults =
-              customScripts.results[platform.toLowerCase()] || [];
+              resultsByPlatform[platform.toLowerCase()] || [];
+
+            if (!platformResults || platformResults.length === 0) {
+              console.warn(`No posts available for ${platform}`);
+              continue;
+            }
 
             platformResults
               .filter((item: any) =>
@@ -267,7 +441,7 @@ export default function Dashboard() {
 
       setTimeSlots(newTimeSlots);
 
-      if (customScripts?.status === "success") {
+      if (!Array.isArray(customScripts) && customScripts.status === "success") {
         const updatedTimeSlots = { ...newTimeSlots };
 
         for (const platform in customScripts.results) {
@@ -279,6 +453,7 @@ export default function Dashboard() {
             const [weekText, dayText] = week_day.split(" - ");
             const week = parseInt(weekText.replace("Week ", ""));
             const day = dayText.trim().toLowerCase();
+
             if (
               updatedTimeSlots[week] &&
               updatedTimeSlots[week][day] &&
@@ -294,9 +469,6 @@ export default function Dashboard() {
         }
 
         setTimeSlots(updatedTimeSlots);
-      } else {
-        console.warn("Failed to generate custom scripts:", customScripts);
-        alert("Failed to generate custom scripts.");
       }
     } catch (error) {
       console.error("Error during /generate_custom_scripts API call:", error);
@@ -306,7 +478,6 @@ export default function Dashboard() {
     }
 
     setIsRegeneratingPlan(false);
-
     setCurrentStep(3);
     setIsContentIdeasOpen(false);
 
