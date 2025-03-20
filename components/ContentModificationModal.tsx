@@ -14,6 +14,7 @@ import {
   regenerateScript,
   regenerateContent,
   regenerateSubContent,
+  generateImage,
 } from "@/components/Service";
 
 interface ContentModificationModalProps {
@@ -22,6 +23,7 @@ interface ContentModificationModalProps {
   onRegenerate: (modifications: string) => void;
   contentType: "content" | "image" | "main" | "sub";
   subTopic: string;
+  platform: string;
 }
 
 export function ContentModificationModal({
@@ -30,6 +32,7 @@ export function ContentModificationModal({
   onRegenerate,
   contentType,
   subTopic,
+  platform,
 }: ContentModificationModalProps) {
   const [modifications, setModifications] = useState(subTopic);
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -43,23 +46,66 @@ export function ContentModificationModal({
     setIsRegenerating(true);
 
     try {
-      const contentOnly = modifications.replace(/^[^:]+:\s*/, "").trim();
+      // const contentOnly = modifications.replace(/^[^:]+:\s*/, "").trim();
 
-      let regeneratedResponse = await regenerateContent(contentOnly);
+      let regeneratedResponse;
 
       if (contentType === "content") {
-        regeneratedResponse = await regenerateScript(modifications);
+        regeneratedResponse = await regenerateScript({
+          subTopic,
+          modifications,
+          platform,
+        });
+
+        if (regeneratedResponse?.status === "success") {
+          const updatedContent =
+            typeof regeneratedResponse?.content === "object"
+              ? regeneratedResponse?.content?.content || ""
+              : regeneratedResponse?.content || "";
+
+          // console.log("Updated Content:", updatedContent);
+          if (!updatedContent) {
+            console.error("Updated content is empty or undefined!");
+          }
+
+          setModifications(updatedContent);
+          onRegenerate(updatedContent);
+          onClose();
+        } else {
+          console.error(
+            "Failed to regenerate script:",
+            regeneratedResponse?.message
+          );
+        }
+      } else if (contentType === "image") {
+        regeneratedResponse = await generateImage({
+          subTopic,
+          modifications,
+        });
+
+        if (regeneratedResponse?.status === "success") {
+          setModifications(regeneratedResponse?.image_url);
+          onRegenerate(regeneratedResponse?.image_url);
+          onClose();
+        } else {
+          console.error(
+            "Failed to regenerate script:",
+            regeneratedResponse?.message
+          );
+        }
       } else if (contentType === "sub") {
         regeneratedResponse = await regenerateSubContent(modifications);
+      } else {
+        const contentOnly = modifications.replace(/^[^:]+:\s*/, "").trim();
+
+        regeneratedResponse = await regenerateContent(contentOnly);
       }
 
       if (regeneratedResponse?.status === "success") {
-        let updatedContent = regeneratedResponse?.week_content || "";
+        let updatedContent;
 
-        let mainContent = updatedContent
-          .replace(/^["']?\s*week:\s*/i, "")
-          .trim();
-        let finalUpdatedText = `${mainContent}`;
+        let mainContent;
+        let finalUpdatedText;
 
         if (contentType === "content") {
           updatedContent = regeneratedResponse.content?.content || "";
@@ -94,6 +140,11 @@ export function ContentModificationModal({
           const mainContent1 = mainContent.replace(/[{}]/g, "").trim();
 
           finalUpdatedText = `${mainContent1}`;
+        } else if (contentType === "main") {
+          updatedContent = regeneratedResponse?.week_content || "";
+
+          mainContent = updatedContent.replace(/^["']?\s*week:\s*/i, "").trim();
+          finalUpdatedText = `${mainContent}`;
         }
 
         setModifications(finalUpdatedText);

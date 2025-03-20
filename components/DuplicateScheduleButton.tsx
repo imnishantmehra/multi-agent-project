@@ -1,46 +1,46 @@
-'use client'
+"use client";
 
-import * as React from 'react'
-import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { RotateCw, Check, Copy } from 'lucide-react'
+import * as React from "react";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { RotateCw, Check, Copy } from "lucide-react";
 
 interface DuplicateScheduleButtonProps {
-  onClick: () => void
+  onClick: () => void;
 }
 
 export const DuplicateScheduleButton = React.forwardRef<
   HTMLButtonElement,
   DuplicateScheduleButtonProps
 >(({ onClick }, ref) => {
-  const [isDuplicating, setIsDuplicating] = useState(false)
-  const [showSuccess, setShowSuccess] = useState(false)
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     if (isDuplicating) {
       const timer = setTimeout(() => {
-        setIsDuplicating(false)
-        setShowSuccess(true)
-      }, 2000) // Simulate a 2-second duplication process
+        setIsDuplicating(false);
+        setShowSuccess(true);
+      }, 2000);
 
-      return () => clearTimeout(timer)
+      return () => clearTimeout(timer);
     }
-  }, [isDuplicating])
+  }, [isDuplicating]);
 
   useEffect(() => {
     if (showSuccess) {
       const timer = setTimeout(() => {
-        setShowSuccess(false)
-      }, 3000) // Show success message for 3 seconds
+        setShowSuccess(false);
+      }, 3000);
 
-      return () => clearTimeout(timer)
+      return () => clearTimeout(timer);
     }
-  }, [showSuccess])
+  }, [showSuccess]);
 
   const handleClick = () => {
-    setIsDuplicating(true)
-    onClick()
-  }
+    setIsDuplicating(true);
+    onClick();
+  };
 
   return (
     <div className="relative">
@@ -48,7 +48,9 @@ export const DuplicateScheduleButton = React.forwardRef<
         ref={ref}
         onClick={handleClick}
         disabled={isDuplicating}
-        className={`w-full bg-[#3d545f] text-white hover:bg-[#3d545f]/90 ${isDuplicating ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`w-full bg-[#3d545f] text-white hover:bg-[#3d545f]/90 ${
+          isDuplicating ? "opacity-50 cursor-not-allowed" : ""
+        }`}
       >
         {isDuplicating ? (
           <RotateCw className="w-4 h-4 mr-2 animate-spin" />
@@ -64,8 +66,7 @@ export const DuplicateScheduleButton = React.forwardRef<
         </div>
       )}
     </div>
-  )
-})
+  );
+});
 
-DuplicateScheduleButton.displayName = 'DuplicateScheduleButton'
-
+DuplicateScheduleButton.displayName = "DuplicateScheduleButton";

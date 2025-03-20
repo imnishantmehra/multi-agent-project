@@ -29,6 +29,7 @@ import {
   RotateCcw,
   Upload,
   RotateCw,
+  Check,
 } from "lucide-react";
 import { TimeSlotUpdateButton } from "./TimeSlotUpdateButton";
 import { WeekNavigation } from "./WeekNavigation";
@@ -44,6 +45,8 @@ import {
 } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { ContentModificationModal } from "./ContentModificationModal";
+
+import { scheduleTime, duplicateScheduleTime } from "@/components/Service";
 
 interface TimeSlot {
   time: string;
@@ -87,6 +90,8 @@ export function DayPlatformModule({
   const [currentWeek, setCurrentWeek] = useState(1);
   const [activeTab, setActiveTab] = useState<string | undefined>(activeDays[0]);
   const [selectedTime, setSelectedTime] = useState("");
+  const [selectedTimeMsg, setSelectedTimeMsg] = useState("");
+  const [duplicateMsg, setDuplicateMsg] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState({
     isOpen: false,
     week: 0,
@@ -126,6 +131,7 @@ export function DayPlatformModule({
   >(null);
   const [isModificationModalOpen, setIsModificationModalOpen] = useState(false);
   const [topic, setTopic] = useState<string | undefined>(undefined);
+  const [platform, setPlatform] = useState<string | undefined>(undefined);
   const [selectedModification, setSelectedModification] = useState<{
     week: number;
     day: string;
@@ -134,7 +140,7 @@ export function DayPlatformModule({
     type: "content" | "image";
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const [refresh, setRefresh] = useState(0);
   useEffect(() => {
     if (activeDays.length > 0 && !activeDays.includes(activeTab || "")) {
       setActiveTab(activeDays[0]);
@@ -160,14 +166,21 @@ export function DayPlatformModule({
     setSelectedTime("");
   };
 
-  const handleUpdateTimeSlot = (
+  const handleUpdateTimeSlot = async (
     week: number,
     day: string,
     platform: string,
     index: number,
     field: "time" | "content" | "image",
-    value: string
+    value: string,
+    content: string
   ) => {
+    const regeneratedResponse = await scheduleTime({
+      newTime: value,
+      content,
+    });
+
+    setSelectedTimeMsg(regeneratedResponse.message);
     setTimeSlots((prevTimeSlots) => {
       const updatedTimeSlots = { ...prevTimeSlots };
       updatedTimeSlots[week][day][platform][index][field] = value;
@@ -188,7 +201,9 @@ export function DayPlatformModule({
     if (selectedModification) {
       const { week, day, platform, index } = selectedModification;
       const key = `${week}-${day}-${platform}-${index}`;
+
       setRegeneratingContent(key);
+
       setTimeout(() => {
         console.log(
           "Regenerating content for:",
@@ -199,18 +214,44 @@ export function DayPlatformModule({
           "with modifications:",
           modifications
         );
+
         setIsRegenerateContent(modifications);
+
         setTimeSlots((prevTimeSlots) => {
-          const updatedTimeSlots = { ...prevTimeSlots };
-          updatedTimeSlots[week][day][platform][index].content = modifications;
-          return updatedTimeSlots;
+          const updatedTimeSlots = structuredClone(prevTimeSlots);
+
+          if (!updatedTimeSlots[week]) updatedTimeSlots[week] = {};
+          if (!updatedTimeSlots[week][day]) updatedTimeSlots[week][day] = {};
+          if (!updatedTimeSlots[week][day][platform])
+            updatedTimeSlots[week][day][platform] = [];
+
+          if (modifications && modifications.trim() !== "") {
+            if (!updatedTimeSlots[week][day][platform][index]) {
+              updatedTimeSlots[week][day][platform][index] = {
+                time: `${9 + index * 3}:00`,
+                content: "",
+                image: "",
+              };
+            } else {
+              updatedTimeSlots[week][day][platform][index] = {
+                ...updatedTimeSlots[week][day][platform][index],
+                content: modifications,
+              };
+            }
+          }
+
+          return { ...updatedTimeSlots };
         });
+
         setRegeneratingContent(null);
         setRegenerateContentSuccess(key);
+
         setTimeout(() => setRegenerateContentSuccess(null), 3000);
       }, 2000);
     }
   };
+
+  useEffect(() => {}, [timeSlots]);
 
   const handleRegenerateImage = (modifications: string) => {
     if (selectedModification) {
@@ -227,6 +268,33 @@ export function DayPlatformModule({
           "with modifications:",
           modifications
         );
+
+        setTimeSlots((prevTimeSlots) => {
+          const updatedTimeSlots = structuredClone(prevTimeSlots);
+
+          if (!updatedTimeSlots[week]) updatedTimeSlots[week] = {};
+          if (!updatedTimeSlots[week][day]) updatedTimeSlots[week][day] = {};
+          if (!updatedTimeSlots[week][day][platform])
+            updatedTimeSlots[week][day][platform] = [];
+
+          if (modifications && modifications.trim() !== "") {
+            if (!updatedTimeSlots[week][day][platform][index]) {
+              updatedTimeSlots[week][day][platform][index] = {
+                time: `${9 + index * 3}:00`,
+                content: "",
+                image: "",
+              };
+            } else {
+              updatedTimeSlots[week][day][platform][index] = {
+                ...updatedTimeSlots[week][day][platform][index],
+                image: modifications,
+              };
+            }
+          }
+
+          return { ...updatedTimeSlots };
+        });
+
         setRegeneratingImage(null);
         setRegenerateImageSuccess(key);
         setTimeout(() => setRegenerateImageSuccess(null), 3000);
@@ -274,11 +342,18 @@ export function DayPlatformModule({
     });
   };
 
-  const handleDuplicateSchedule = (
+  const handleDuplicateSchedule = async (
     week: number,
     day: string,
     platform: string
   ) => {
+    const regeneratedResponse = await duplicateScheduleTime({
+      source_week: week,
+      source_day: day,
+      platform: platform,
+    });
+    setDuplicateMsg(regeneratedResponse.message);
+    console.log("message", regeneratedResponse.message);
     const sourceCount = timeSlots[week]?.[day]?.[platform]?.length || 0;
     const targetCounts: Record<string, number> = {};
 
@@ -370,7 +445,15 @@ export function DayPlatformModule({
           reader.onload = (e) => {
             const result = e.target?.result;
             if (typeof result === "string") {
-              handleUpdateTimeSlot(week, day, platform, index, "image", result);
+              handleUpdateTimeSlot(
+                week,
+                day,
+                platform,
+                index,
+                "image",
+                result,
+                ""
+              );
             }
           };
           reader.readAsDataURL(file);
@@ -389,8 +472,31 @@ export function DayPlatformModule({
   ) => {
     setSelectedModification({ week, day, platform, index, type });
     setTopic(topic);
+    console.log("topic", topic);
     setIsModificationModalOpen(true);
+    setPlatform(platform);
   };
+
+  useEffect(() => {
+    if (duplicateMsg) {
+      const timer = setTimeout(() => {
+        setDuplicateMsg("");
+        setDuplicateMsg("");
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [duplicateMsg]);
+
+  useEffect(() => {
+    if (selectedTimeMsg) {
+      const timer = setTimeout(() => {
+        setSelectedTimeMsg("");
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [selectedTimeMsg]);
 
   return (
     <TooltipProvider>
@@ -478,13 +584,24 @@ export function DayPlatformModule({
                                               platform,
                                               index,
                                               "time",
-                                              value
+                                              value,
+                                              timeSlots[currentWeek]?.[day]?.[
+                                                platform
+                                              ]?.[index]?.content
                                             )
                                           }
                                         >
-                                          <SelectTrigger className="w-[180px]">
-                                            <SelectValue placeholder="Select time" />
-                                          </SelectTrigger>
+                                          <div>
+                                            <SelectTrigger className="w-[180px]">
+                                              <SelectValue placeholder="Select time" />
+                                            </SelectTrigger>
+                                            {selectedTimeMsg && (
+                                              <div className="pt-2 left-0 right-0 top-0 flex items-center justify-left text-green-600 font-medium">
+                                                <Check className="w-4 h-4 mr-1" />
+                                                {selectedTimeMsg}
+                                              </div>
+                                            )}
+                                          </div>
                                           <SelectContent>
                                             {TIME_OPTIONS.map((time) => (
                                               <SelectItem
@@ -524,6 +641,7 @@ export function DayPlatformModule({
                                           </Button>
                                         </div>
                                       </div>
+
                                       <div className="space-y-2">
                                         <div className="flex items-center justify-between">
                                           <label className="text-sm font-medium">
@@ -550,11 +668,12 @@ export function DayPlatformModule({
                                           </Button>
                                         </div>
                                         <Textarea
+                                          key={refresh}
                                           placeholder="Enter content here..."
                                           value={
-                                            timeSlots[currentWeek]?.[day]?.[
+                                            timeSlots?.[currentWeek]?.[day]?.[
                                               platform
-                                            ]?.[index]?.content || ""
+                                            ]?.[index]?.content ?? ""
                                           }
                                           onChange={(e) =>
                                             handleUpdateTimeSlot(
@@ -563,7 +682,8 @@ export function DayPlatformModule({
                                               platform,
                                               index,
                                               "content",
-                                              e.target.value
+                                              e.target.value,
+                                              ""
                                             )
                                           }
                                           className="min-h-[100px]"
@@ -640,7 +760,8 @@ export function DayPlatformModule({
                                                   platform,
                                                   index,
                                                   "image",
-                                                  e.target.value
+                                                  e.target.value,
+                                                  ""
                                                 )
                                               }
                                               className="w-full"
@@ -656,12 +777,17 @@ export function DayPlatformModule({
                                                     platform,
                                                     index,
                                                     "image",
-                                                    ""
+                                                    timeSlots[currentWeek]?.[
+                                                      day
+                                                    ]?.[platform]?.[index]
+                                                      ?.content
                                                   )
                                                 }
                                               >
                                                 <Wand2 className="w-4 h-4 mr-2" />
-                                                Regenerate
+                                                {timeSlot.image
+                                                  ? "Regenerate"
+                                                  : "Generate"}
                                               </Button>
                                               <Button
                                                 variant="outline"
@@ -744,6 +870,12 @@ export function DayPlatformModule({
                                           )
                                         }
                                       />
+                                      {duplicateMsg && (
+                                        <div className="pt-10 left-0 right-0 top-0 flex items-center justify-left text-green-600 font-medium">
+                                          <Check className="w-4 h-4 mr-1" />
+                                          {duplicateMsg}
+                                        </div>
+                                      )}
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent>
@@ -834,6 +966,7 @@ export function DayPlatformModule({
           }}
           contentType={selectedModification?.type || "content"}
           subTopic={topic ?? ""}
+          platform={platform ?? ""}
         />
         <input
           type="file"

@@ -8,14 +8,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChevronLeft,
   RotateCw,
-  Check,
   Loader2,
   AlertCircle,
+  Check,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
   plateformScriptAgent,
   plateformScriptTask,
+  regenerateContentAgent,
+  regenerateContentTask,
 } from "@/components/Service";
 
 interface PlatformConnection {
@@ -41,106 +43,45 @@ const PLATFORMS_SCRIPT_REGENERATOR = [
   "Regenrate_Subcontent",
 ];
 
-const saveToLocalStorageWithExpiry = (key: string, data: any) => {
-  const timestampedData = {
-    data,
-    timestamp: new Date().getTime(),
-  };
-  localStorage.setItem(key, JSON.stringify(timestampedData));
-};
-
-const loadFromLocalStorageWithExpiry = (key: string) => {
-  try {
-    const item = localStorage.getItem(key);
-    if (!item) return null;
-
-    const { data, timestamp } = JSON.parse(item);
-    const now = new Date().getTime();
-
-    if (now - timestamp > 86400000) {
-      localStorage.removeItem(key);
-      return null;
-    }
-
-    return data;
-  } catch (error) {
-    console.error("Error loading or parsing data from localStorage:", error);
-    return null;
-  }
-};
-
 export default function AccountSettings() {
-  const [connections, setConnections] = useState<
-    Record<string, PlatformConnection>
-  >({});
-  const [task, setTask] = useState<Record<string, PlatformConnection>>({});
   const [mergedData, setMergedData] = useState<
     (PlatformConnection & { platform: string })[]
   >([]);
-  const [savingPlatform, setSavingPlatform] = useState<string | null>(null);
-  const [savedPlatform, setSavedPlatform] = useState<string | null>(null);
+
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [savingPlatform, setSavingPlatform] = useState<string | null>(null);
 
   const fetchAgentScripts = useCallback(async () => {
     try {
       setLoading(true);
-
-      const cachedAgentData = loadFromLocalStorageWithExpiry("agentData");
-      const cachedTaskData = loadFromLocalStorageWithExpiry("taskData");
-
-      if (cachedAgentData && cachedTaskData) {
-        const merged = PLATFORMS_SCRIPT_REGENERATOR.map((platform) => ({
-          platform,
-          ...cachedAgentData[platform],
-          ...cachedTaskData[platform],
-        }));
-        setMergedData(merged);
-        setLoading(false);
-        return;
-      }
-
       const [agentResponses, taskResponses] = await Promise.all([
         Promise.all(
           PLATFORMS_SCRIPT_REGENERATOR.map((platform) =>
-            plateformScriptAgent(platform.toLowerCase()).catch((err) => {
-              console.error(`Error fetching agent data for ${platform}:`, err);
-              return { role: "", goal: "", backstory: "" };
-            })
+            plateformScriptAgent(platform.toLowerCase()).catch(() =>
+              Promise.resolve({ role: "", goal: "", backstory: "" })
+            )
           )
         ),
         Promise.all(
           PLATFORMS_SCRIPT_REGENERATOR.map((platform) =>
-            plateformScriptTask(platform.toLowerCase()).catch((err) => {
-              console.error(`Error fetching task data for ${platform}:`, err);
-              return { description: "", expected_output: "" };
-            })
+            plateformScriptTask(platform.toLowerCase()).catch(() =>
+              Promise.resolve({ description: "", expected_output: "" })
+            )
           )
         ),
       ]);
 
-      const agentData: Record<string, PlatformConnection> = {};
-      const taskData: Record<string, PlatformConnection> = {};
-
-      PLATFORMS_SCRIPT_REGENERATOR.forEach((platform, index) => {
-        agentData[platform] = agentResponses[index];
-        taskData[platform] = taskResponses[index];
-      });
-
-      saveToLocalStorageWithExpiry("agentData", agentData);
-      saveToLocalStorageWithExpiry("taskData", taskData);
-
-      const merged = PLATFORMS_SCRIPT_REGENERATOR.map((platform) => ({
+      const merged = PLATFORMS_SCRIPT_REGENERATOR.map((platform, index) => ({
         platform,
-        ...agentData[platform],
-        ...taskData[platform],
+        ...agentResponses[index],
+        ...taskResponses[index],
       }));
-
       setMergedData(merged);
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching agent scripts:", err);
+    } catch {
       setError("An error occurred while fetching data.");
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -149,102 +90,46 @@ export default function AccountSettings() {
     fetchAgentScripts();
   }, [fetchAgentScripts]);
 
-  useEffect(() => {
-    if (savedPlatform) {
-      const timer = setTimeout(() => setSavedPlatform(null), 3000);
-      return () => clearTimeout(timer);
+  const handleRegenerate = async (
+    platformData: PlatformConnection & { platform: string }
+  ) => {
+    setSavingPlatform(platformData.platform);
+    setSuccessMessage("");
+
+    try {
+      await regenerateContentAgent({
+        agentName: platformData.platform.toLowerCase(),
+        role: platformData.role || "",
+        goal: platformData.goal || "",
+        backstory: platformData.backstory || "",
+      });
+
+      await regenerateContentTask({
+        agentName: platformData.platform.toLowerCase(),
+        description: platformData.description || "",
+        expectedOutput: platformData.expected_output || "",
+      });
+
+      setSuccessMessage(
+        "Task updated successfully. Database re-initialized with latest definitions."
+      );
+
+      setTimeout(() => {
+        fetchAgentScripts();
+      }, 5000);
+
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 4000);
+    } catch (error) {
+      console.error(
+        "Error regenerating content for",
+        platformData.platform,
+        error
+      );
+    } finally {
+      setSavingPlatform(null);
     }
-  }, [savedPlatform]);
-
-  const handleSave = async (platform: string) => {
-    if (!mergedData.find((item) => item.platform === platform)) return;
-
-    setSavingPlatform(platform);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setSavingPlatform(null);
-    setSavedPlatform(platform);
-  };
-
-  const renderPlatformCard = (platform: string) => {
-    const fields = [
-      "role",
-      "goal",
-      "backstory",
-      "description",
-      "expected_output",
-    ];
-
-    const platformData = mergedData.find((item) => item.platform === platform);
-
-    return (
-      <Card key={platform}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-base font-medium">
-            <strong>{platform}</strong> Agent Script
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {loading ? (
-            <div className="flex justify-center items-center min-h-[200px]">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center text-red-500">
-              <AlertCircle className="h-6 w-6 mr-2" />
-              {error}
-            </div>
-          ) : (
-            fields.map((key) => (
-              <div key={key} className="space-y-2">
-                <h3 className="text-[1.1rem] font-semibold">
-                  {key
-                    .replace(/([A-Z])/g, " $1")
-                    .replace(/^./, (str) => str.toUpperCase())}
-                </h3>
-                <textarea
-                  id={`${platform}-${key}`}
-                  value={platformData?.[key as keyof PlatformConnection] || ""}
-                  onChange={(e) =>
-                    setMergedData((prev) =>
-                      prev.map((item) =>
-                        item.platform === platform
-                          ? { ...item, [key]: e.target.value }
-                          : item
-                      )
-                    )
-                  }
-                  className="border rounded-md p-2 w-full focus:ring-1 focus:ring-[#020817] focus:border-transparent text-sm min-h-[100px]"
-                  rows={3}
-                />
-              </div>
-            ))
-          )}
-          {!loading && !error && (
-            <div className="relative pt-10">
-              <Button
-                onClick={() => handleSave(platform)}
-                className="w-full bg-[#3d545f] text-white hover:bg-[#3d545f]/90 disabled:opacity-50"
-              >
-                {savingPlatform === platform ? (
-                  <>
-                    <RotateCw className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  `Save ${platform} Agent Script`
-                )}
-              </Button>
-              {savedPlatform === platform && (
-                <div className="absolute left-0 right-0 top-0 flex items-center justify-center text-green-600 font-medium">
-                  <Check className="w-4 h-4 mr-1" />
-                  Settings Saved
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
   };
 
   return (
@@ -266,7 +151,77 @@ export default function AccountSettings() {
             <h2 className="text-2xl font-semibold mb-4">Script Regenerator</h2>
             <Separator className="my-4" />
             <div className="grid gap-6 md:grid-cols-2">
-              {PLATFORMS_SCRIPT_REGENERATOR.map(renderPlatformCard)}
+              {mergedData.map((platformData) => (
+                <Card key={platformData.platform}>
+                  <CardHeader>
+                    <CardTitle className="text-base font-medium">
+                      <strong>{platformData.platform}</strong> Agent Script
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {loading ? (
+                      <div className="flex justify-center items-center min-h-[200px]">
+                        <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+                      </div>
+                    ) : error ? (
+                      <div className="flex items-center justify-center text-red-500">
+                        <AlertCircle className="h-6 w-6 mr-2" />
+                        {error}
+                      </div>
+                    ) : (
+                      Object.keys(platformData).map(
+                        (key) =>
+                          key !== "platform" && (
+                            <div key={key} className="space-y-2">
+                              <h3 className="text-[1.1rem] font-semibold">
+                                {key
+                                  .replace(/([A-Z])/g, " $1")
+                                  .replace(/^./, (str) => str.toUpperCase())}
+                              </h3>
+                              <textarea
+                                value={
+                                  platformData[
+                                    key as keyof PlatformConnection
+                                  ] || ""
+                                }
+                                onChange={(e) =>
+                                  setMergedData((prev) =>
+                                    prev.map((item) =>
+                                      item.platform === platformData.platform
+                                        ? { ...item, [key]: e.target.value }
+                                        : item
+                                    )
+                                  )
+                                }
+                                className="border rounded-md p-2 w-full focus:ring-1 focus:ring-[#020817] focus:border-transparent text-sm min-h-[100px]"
+                                rows={5}
+                              />
+                            </div>
+                          )
+                      )
+                    )}
+                    {!loading && !error && (
+                      <Button
+                        onClick={() => handleRegenerate(platformData)}
+                        className="w-full bg-[#3d545f] text-white hover:bg-[#3d545f]/90 disabled:opacity-50"
+                        disabled={savingPlatform === platformData.platform}
+                      >
+                        {savingPlatform === platformData.platform ? (
+                          <RotateCw className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          "Update"
+                        )}
+                      </Button>
+                    )}
+                    {successMessage && (
+                      <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-100 border border-green-500 text-green-700 px-4 py-2 rounded-lg shadow-lg flex items-center">
+                        <Check className="w-4 h-4 mr-2" />
+                        {successMessage}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </div>
         </div>

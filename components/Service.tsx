@@ -1,7 +1,7 @@
 import axios, { AxiosResponse } from "axios";
 
 const API_BASE_URL =
-  "https://75d5-2405-201-3009-d88a-6448-76b1-ceb6-729e.ngrok-free.app";
+  "https://1fe7-2405-201-3009-d88a-757d-fa2-f7c1-a0b4.ngrok-free.app";
 
 /**
  * Generic service for making API calls
@@ -12,7 +12,7 @@ const API_BASE_URL =
  */
 export const Service = async (
   endpoint: string,
-  method: "GET" | "POST" | "PUT" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
   formData: any,
   queryParams?: Record<string, string>
 ): Promise<any> => {
@@ -137,31 +137,42 @@ export const generateCustomScripts = async (
 })();
 
 /**
- * Call the /regenerate_script endpoint
- * @param content - The content to regenerate
+ * Call the /regenerate_script_v1 endpoint
+ * @param params - Object containing content, query, and platform
  */
-export const regenerateScript = async (content: string): Promise<any> => {
+
+export const regenerateScript = async ({
+  subTopic,
+  modifications,
+  platform,
+}: {
+  subTopic: string;
+  modifications: string;
+  platform: string;
+}): Promise<any> => {
   try {
-    const endpoint = "regenerate_script";
+    const endpoint = "regenerate_script_v1";
 
     const timestamp = new Date().getTime().toString();
-
-    const cleanedContent = decodeURIComponent(content);
+    const cleanedContent = decodeURIComponent(subTopic);
 
     const queryParams: Record<string, string> = {
       content: cleanedContent,
+      query: modifications,
+      platform,
       timestamp,
     };
 
     const response = await Service(endpoint, "PUT", {}, queryParams);
 
     if (response?.status === "success") {
-      if (typeof response.content === "string") {
-        const decodedContent = decodeURIComponent(response.content);
-        return { ...response, content: decodedContent };
-      } else if (typeof response.content === "object") {
-        return { ...response, content: response.content };
-      }
+      // Extract content properly
+      const decodedContent =
+        typeof response.content === "object"
+          ? response.content.content || ""
+          : response.content || "";
+
+      return { ...response, content: decodedContent };
     } else {
       console.error("Failed to regenerate script:", response?.message);
       return null;
@@ -294,6 +305,178 @@ export const plateformScriptTask = async (agent_name: string): Promise<any> => {
         error
       );
     }
+    return null;
+  }
+};
+
+/**
+ * Call the /regenrate_subcontent_task endpoint
+ * @param params - Object containing agentName, description, and expectedOutput
+ */
+
+export const regenerateContentTask = async ({
+  agentName,
+  description,
+  expectedOutput,
+}: {
+  agentName: string;
+  description: string;
+  expectedOutput: string;
+}): Promise<any> => {
+  try {
+    const endpoint = `tasks/${agentName}_task`;
+
+    const payload = {
+      description,
+      expected_output: expectedOutput,
+    };
+
+    const response = await Service(endpoint, "PUT", payload, {});
+
+    if (response?.status === "success") {
+      return response;
+    } else {
+      console.error("Failed to regenerate subcontent:", response?.message);
+      return null;
+    }
+  } catch (error) {
+    console.error("Error during subcontent regeneration:", error);
+    return null;
+  }
+};
+
+/**
+ * Call the /regenrate_subcontent_agent endpoint
+ * @param params - Object containing agentName, role, goal, and backstory
+ */
+
+export const regenerateContentAgent = async ({
+  agentName,
+  role,
+  goal,
+  backstory,
+}: {
+  agentName: string;
+  role: string;
+  goal: string;
+  backstory: string;
+}): Promise<any> => {
+  try {
+    const endpoint = `agents/${agentName}_agent`;
+
+    const payload = {
+      role,
+      goal,
+      backstory,
+    };
+
+    const response = await Service(endpoint, "PUT", payload, {});
+
+    if (response?.status === "success") {
+      return response;
+    } else {
+      console.error("Failed to regenerate subcontent:", response?.message);
+      return null;
+    }
+  } catch (error) {
+    console.error("Error during subcontent agent regeneration:", error);
+    return null;
+  }
+};
+
+/**
+ * Call the /generate_image endpoint
+ * @param params - Object containing content, query, and platform
+ */
+export const generateImage = async ({
+  subTopic,
+  modifications,
+}: {
+  subTopic: string;
+  modifications: string;
+}): Promise<any> => {
+  try {
+    const endpoint = "generate_image";
+
+    const timestamp = new Date().getTime().toString();
+    const cleanedContent = decodeURIComponent(subTopic);
+
+    const queryParams: Record<string, string> = {
+      content: cleanedContent,
+      query: modifications,
+      timestamp,
+    };
+
+    const response = await Service(endpoint, "POST", {}, queryParams);
+
+    if (response?.status === "success") {
+      return response;
+    } else {
+      console.error("Failed to generate image:", response?.message);
+      return null;
+    }
+  } catch (error) {
+    console.error("Error during image generation:", error);
+    return null;
+  }
+};
+
+/**
+ * Call the /content/schedule-time endpoint
+ * @param content - The text content to be scheduled
+ * @param newTime - The new time for scheduling
+ */
+export const scheduleTime = async ({
+  newTime,
+  content,
+}: {
+  newTime: string;
+  content: string;
+}): Promise<any> => {
+  try {
+    const encodedContent = encodeURIComponent(content);
+
+    const endpoint = `content/schedule-time?content=${encodedContent}`;
+
+    const body = {
+      new_time: newTime,
+    };
+
+    const response = await Service(endpoint, "PATCH", body);
+    return response;
+  } catch (error) {
+    console.error("Error scheduling content:", error);
+    return null;
+  }
+};
+
+/**
+ * Call the /content/schedule-time endpoint
+ * @param content - The text content to be scheduled
+ * @param newTime - The new time for scheduling
+ */
+export const duplicateScheduleTime = async ({
+  source_week,
+  source_day,
+  platform,
+}: {
+  source_week: number;
+  source_day: string;
+  platform: string;
+}): Promise<any> => {
+  try {
+    const endpoint = `duplicate-schedule-times`;
+
+    const body = {
+      source_week,
+      source_day,
+      platform,
+    };
+
+    const response = await Service(endpoint, "POST", body);
+    return response;
+  } catch (error) {
+    console.error("Error scheduling content:", error);
     return null;
   }
 };
