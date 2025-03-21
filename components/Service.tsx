@@ -1,7 +1,7 @@
 import axios, { AxiosResponse } from "axios";
 
 const API_BASE_URL =
-  "https://1fe7-2405-201-3009-d88a-757d-fa2-f7c1-a0b4.ngrok-free.app";
+  "https://40ea-2405-201-3009-d88a-e8d6-e911-36b3-93ff.ngrok-free.app";
 
 /**
  * Generic service for making API calls
