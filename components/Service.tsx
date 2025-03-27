@@ -1,7 +1,6 @@
 import axios, { AxiosResponse } from "axios";
 
-const API_BASE_URL =
-  "https://24ba-2405-201-3009-d88a-cd7e-fe31-464-47b6.ngrok-free.app";
+const API_BASE_URL = "https://multiagent-933293844713.us-central1.run.app";
 
 /**
  * Generic service for making API calls
