@@ -29,13 +29,13 @@ interface PlatformConnection {
 }
 
 const PLATFORMS_SCRIPT_REGENERATOR = [
-  "Instagram",
-  "Facebook",
-  "YouTube",
-  "Twitter",
-  "LinkedIn",
-  "WordPress",
-  "TikTok",
+  // "Instagram",
+  // "Facebook",
+  // "YouTube",
+  // "Twitter",
+  // "LinkedIn",
+  // "WordPress",
+  // "TikTok",
   "Script_Research",
   "QC",
   "Script_Rewriter",
