@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, Loader2 } from "lucide-react";
@@ -44,6 +45,23 @@ export default function AccountSettings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingPlatform, setSavingPlatform] = useState<string | null>(null);
+  const [connections, setConnections] = useState<
+    Record<string, PlatformConnection>
+  >({});
+
+  const handleInputChange = (
+    platform: string,
+    field: keyof PlatformConnection,
+    value: string
+  ) => {
+    setConnections((prev) => ({
+      ...prev,
+      [platform]: {
+        ...prev[platform],
+        [field]: value,
+      },
+    }));
+  };
 
   const [linkedinConnected, setLinkedinConnected] = useState(false);
   const [twitterConnected, setTwitterConnected] = useState(false);
@@ -375,25 +393,56 @@ export default function AccountSettings() {
                 <Card key={platformData.platform}>
                   <CardHeader>
                     <CardTitle className="text-base font-medium">
-                      <strong>{platformData.platform}</strong> Agent Script
+                      <strong>{platformData.platform}</strong>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {loading ? (
-                      <div className="flex justify-center items-center min-h-[200px]">
-                        <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
-                      </div>
-                    ) : (
-                      <Button
-                        className="w-full bg-[#3d545f] text-white hover:bg-[#3d545f]/90"
-                        onClick={() => handleRegenerate(platformData)}
-                        disabled={savingPlatform === platformData.platform}
-                      >
-                        {savingPlatform === platformData.platform
-                          ? "Regenerating..."
-                          : "Regenerate Script"}
-                      </Button>
-                    )}
+                    <div className="space-y-2">
+                      {Object.entries(platformData).map(([key, value]) => {
+                        if (["platform"].includes(key)) return null;
+                        const label = key
+                          .replace(/_/g, " ")
+                          .replace(/\b\w/g, (char) => char.toUpperCase());
+
+                        return (
+                          <div key={key} className="space-y-2">
+                            <h3 className="text-[1.1rem] font-semibold">
+                              {label}
+                            </h3>
+                            <textarea
+                              id={`${platformData.platform}-${key}`}
+                              value={value || ""}
+                              onChange={(e) =>
+                                handleInputChange(
+                                  platformData.platform,
+                                  key as keyof PlatformConnection,
+                                  e.target.value
+                                )
+                              }
+                              className="resize-none p-2 border border-gray-300 rounded-md"
+                              style={{ width: "100%", height: "150px" }}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="relative pt-10">
+                      {loading ? (
+                        <div className="flex justify-center items-center min-h-[200px]">
+                          <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+                        </div>
+                      ) : (
+                        <Button
+                          className="w-full bg-[#3d545f] text-white hover:bg-[#3d545f]/90"
+                          onClick={() => handleRegenerate(platformData)}
+                          disabled={savingPlatform === platformData.platform}
+                        >
+                          {savingPlatform === platformData.platform
+                            ? "Regenerating..."
+                            : "Regenerate Script"}
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               ))}
