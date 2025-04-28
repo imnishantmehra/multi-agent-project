@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Service } from "@/components/Service";
 import { generateCustomScripts } from "@/components/Service";
+import clsx from "clsx";
 interface TimeSlot {
   time: string;
   content: string;
@@ -227,6 +228,8 @@ export default function Dashboard() {
         platformPosts
       );
 
+      console.log("customScripts", customScripts);
+
       if (
         !customScripts ||
         (Array.isArray(customScripts) && customScripts.length === 0)
@@ -235,13 +238,17 @@ export default function Dashboard() {
           "Invalid response from generateCustomScripts:",
           customScripts
         );
-        alert("Failed to generate custom scripts.");
+        alert(
+          "Failed to generate custom scripts. Please Connect Plateform First."
+        );
         return;
       }
 
       if (!Array.isArray(customScripts) && customScripts.status !== "success") {
         console.warn("Failed to generate custom scripts:", customScripts);
-        alert("Failed to generate custom scripts.");
+        alert(
+          "Failed to generate custom scripts. Please Connect Plateform First."
+        );
         return;
       }
 
@@ -494,7 +501,8 @@ export default function Dashboard() {
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-[#7A99A8]">
-        <Header username="John Doe" />
+        {/* <Header username="John Doe" /> */}
+        <Header />
         <main className="p-6 max-w-7xl mx-auto space-y-6">
           <h1 className="text-4xl font-extrabold text-white">
             Admin Dashboard

@@ -1,34 +1,37 @@
 import axios, { AxiosResponse } from "axios";
 
-const API_BASE_URL = "https://multiagent-933293844713.us-central1.run.app";
+const API_BASE_URL =
+  "https://d437-2405-201-3009-d88a-3505-efb9-2801-239e.ngrok-free.app";
 
-// const API_BASE_URL =
-//   "https://d72f-2405-201-3009-d88a-7c-7caa-6537-161e.ngrok-free.app";
 /**
  * Generic service for making API calls
- * @param endpoint - API endpoint
- * @param method - HTTP method (POST, PUT, GET, DELETE)
- * @param formData - Data to be sent (either FormData or JSON object)
- * @param queryParams - Query parameters (optional)
  */
 export const Service = async (
   endpoint: string,
   method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
-  formData: any,
-  queryParams?: Record<string, string>
+  formData: any = {},
+  queryParams?: Record<string, string>,
+  formUrlEncoded: boolean = false
 ): Promise<any> => {
   const queryString = queryParams
     ? `?${new URLSearchParams(queryParams).toString()}`
     : "";
+
   const url = `${API_BASE_URL}/${endpoint}${queryString}`;
+  const token = localStorage.getItem("token");
 
   try {
     const headers: Record<string, string> = {
       "ngrok-skip-browser-warning": "true",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
+    let dataToSend = formData;
+
     if (formData instanceof FormData) {
-      headers["Content-Type"] = "multipart/form-data";
+    } else if (formUrlEncoded) {
+      headers["Content-Type"] = "application/x-www-form-urlencoded";
+      dataToSend = new URLSearchParams(formData).toString();
     } else {
       headers["Content-Type"] = "application/json";
     }
@@ -36,13 +39,13 @@ export const Service = async (
     const response: AxiosResponse = await axios({
       method,
       url,
-      data: formData,
+      data: method !== "GET" ? dataToSend : undefined,
       headers,
     });
 
     return response.data;
   } catch (error) {
-    console.error(`Error during API call to ${endpoint}:`, error);
+    console.error(`❌ Error during API call to ${endpoint}:`, error);
     throw error;
   }
 };
@@ -81,7 +84,6 @@ export const generateCustomScripts = async (
   days: string[],
   platformPosts: { [key: string]: number }
 ): Promise<any> => {
-  // const endpoint = "generate_custom_scripts";
   const endpoint = "generate_custom_scripts_v2";
   const formData = new FormData();
   formData.append("file", file);
@@ -120,7 +122,6 @@ export const generateCustomScripts = async (
       const platformPostsObj = platformPosts ? JSON.parse(platformPosts) : {};
 
       const extractedContent = await extractContent(file, weeks, days[0]);
-      console.log("Extracted Content Response:", extractedContent);
 
       const customScripts = await generateCustomScripts(
         file,
@@ -128,7 +129,6 @@ export const generateCustomScripts = async (
         days,
         platformPostsObj
       );
-      console.log("Custom Scripts Response:", customScripts);
     };
 
     fileInput.click();
@@ -167,7 +167,6 @@ export const regenerateScript = async ({
     const response = await Service(endpoint, "PUT", {}, queryParams);
 
     if (response?.status === "success") {
-      // Extract content properly
       const decodedContent =
         typeof response.content === "object"
           ? response.content.content || ""
@@ -479,5 +478,356 @@ export const duplicateScheduleTime = async ({
   } catch (error) {
     console.error("Error scheduling content:", error);
     return null;
+  }
+};
+
+/**
+ * Call the /signup endpoint
+ * @param name - User full name
+ * @param email - User email
+ * @param password - User password
+ */
+export const signupUser = async ({
+  username,
+  email,
+  password,
+  contact,
+}: {
+  username: string;
+  email: string;
+  password: string;
+  contact: string;
+}): Promise<any> => {
+  try {
+    const endpoint = "register";
+
+    const payload = {
+      username,
+      email,
+      password,
+      contact,
+    };
+
+    const response = await Service(endpoint, "POST", payload);
+
+    return {
+      status: response?.status || "error",
+      message: response?.message || "Something went wrong.",
+    };
+  } catch (error: any) {
+    console.error("Error during signup:", error);
+
+    const errorMessage =
+      error?.response?.data?.detail ||
+      error?.message ||
+      "An unexpected error occurred. Please try again.";
+
+    return {
+      status: "error",
+      message: errorMessage,
+    };
+  }
+};
+
+export const verifyEmail = async ({
+  email,
+  otp_code,
+}: {
+  email: string;
+  otp_code: string;
+}): Promise<any> => {
+  try {
+    const endpoint = "verify-email";
+
+    const payload = {
+      email,
+      otp_code,
+    };
+
+    const response = await Service(endpoint, "POST", payload);
+
+    return {
+      status: response?.status || "success",
+      message: response?.message || "Email verified successfully",
+    };
+  } catch (error: any) {
+    console.error("Error during email verification:", error);
+
+    const errorMessage =
+      error?.response?.data?.detail ||
+      error?.message ||
+      "OTP verification failed. Please try again.";
+
+    return {
+      status: "error",
+      message: errorMessage,
+    };
+  }
+};
+
+/**
+ * Call the /login endpoint
+ * @param email - User email
+ * @param password - User password
+ */
+export const loginUser = async ({
+  username,
+  password,
+}: {
+  username: string;
+  password: string;
+}): Promise<any> => {
+  try {
+    const endpoint = "login";
+
+    const payload = {
+      grant_type: "password",
+      username,
+      password,
+      scope: "",
+      client_id: "string",
+      client_secret: "string",
+    };
+
+    const response = await Service(endpoint, "POST", payload, undefined, true);
+
+    if (response?.access_token) {
+      return {
+        status: "success",
+        token: response.access_token,
+      };
+    } else {
+      console.error("Login failed:", response?.message || response?.error);
+      return {
+        status: "error",
+        message:
+          response?.message || response?.error || "Unexpected login response",
+      };
+    }
+  } catch (error) {
+    console.error("Error during login:", error);
+    return {
+      status: "error",
+      message: "Login failed due to unexpected error.",
+    };
+  }
+};
+
+/**
+ * Call the /resend-otp endpoint
+ * @param email - User email
+ */
+export const resendotp = async ({ email }: { email: string }): Promise<any> => {
+  try {
+    const endpoint = "resend-otp";
+
+    const payload = {
+      email,
+    };
+
+    const response = await Service(endpoint, "POST", payload);
+
+    if (response?.status === 200) {
+      return {
+        status: 200,
+        message: response.message,
+      };
+    } else {
+      console.error("OTP resend failed:", response?.message || response?.error);
+      return {
+        status: "error",
+        message: response?.message || response?.error || "Unexpected response",
+      };
+    }
+  } catch (error) {
+    console.error("Error during resend OTP:", error);
+    return {
+      status: "error",
+      message: "OTP resend failed due to unexpected error.",
+    };
+  }
+};
+
+/**
+ * Call the /forget-password endpoint
+ * @param email - User email
+ */
+export const forgetPassword = async ({
+  email,
+}: {
+  email: string;
+}): Promise<any> => {
+  try {
+    const endpoint = "forget-password";
+
+    const payload = {
+      email,
+    };
+
+    const response = await Service(endpoint, "POST", payload);
+
+    if (response?.status === 200) {
+      return {
+        status: 200,
+        message: response.message,
+      };
+    } else {
+      console.error("OTP resend failed:", response?.message || response?.error);
+      return {
+        status: "error",
+        message: response?.message || response?.error || "Unexpected response",
+      };
+    }
+  } catch (error) {
+    console.error("Error during resend OTP:", error);
+    return {
+      status: "error",
+      message: "OTP resend failed due to unexpected error.",
+    };
+  }
+};
+
+/**
+ * Call the /reset-password endpoint
+ * @param email - User email
+ * @param otp_code - OTP code sent to email
+ * @param new_password - New password to set
+ */
+export const resetPassword = async ({
+  email,
+  otp_code,
+  new_password,
+}: {
+  email: string;
+  otp_code: string;
+  new_password: string;
+}): Promise<any> => {
+  try {
+    const endpoint = "reset-password";
+
+    const payload = {
+      email,
+      otp_code,
+      new_password,
+    };
+
+    const response = await Service(endpoint, "POST", payload);
+
+    if (response?.status === 200) {
+      return {
+        status: 200,
+        message: response.message,
+      };
+    } else {
+      return {
+        status: "error",
+        message: response?.message || response?.error || "Unexpected response",
+      };
+    }
+  } catch (error) {
+    console.error("Error during reset password:", error);
+    return {
+      status: "error",
+      message: "Reset password failed due to unexpected error.",
+    };
+  }
+};
+
+/**
+ * Call the /linkedin/auth endpoint
+ * @param urls - List of LinkedIn URLs
+ */
+export const linkedinConnect = async (): Promise<any> => {
+  try {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      console.error("No token found in localStorage.");
+      return;
+    }
+
+    const response = await Service("linkedin/auth", "GET", {});
+
+    if (response?.auth_url) {
+      window.location.href = response.auth_url;
+    } else {
+      console.error("No auth_url in response");
+    }
+  } catch (error) {
+    console.error("Error during LinkedIn connection:", error);
+  }
+};
+
+/**
+ * Call the /twitter/auth endpoint
+ * @param urls - List of LinkedIn URLs
+ */
+export const twitterConnect = async (): Promise<any> => {
+  try {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      console.error("No token found in localStorage.");
+      return;
+    }
+
+    const response = await Service("twitter/auth", "GET", {});
+    console.log("Twitter auth response:", response);
+
+    if (response?.redirect_url) {
+      window.location.href = response.redirect_url;
+    } else {
+      console.error("No redirect_url in response");
+    }
+  } catch (error) {
+    console.error("Error during LinkedIn connection:", error);
+  }
+};
+
+/**
+ * Call the /wordpress/auth endpoint
+ * @param site_url - WordPress site URL
+ * @param username - WordPress username
+ * @param password - WordPress password
+ */
+
+export const wordpressConnect = async (
+  site_url: string,
+  username: string,
+  password: string
+): Promise<any> => {
+  try {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      console.error("No token found in localStorage.");
+      return;
+    }
+
+    const formBody = new URLSearchParams();
+    formBody.append("site_url", site_url);
+    formBody.append("username", username);
+    formBody.append("password", password);
+
+    const response = await fetch(`${API_BASE_URL}/wordpress/auth`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: formBody,
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      console.log("WordPress connected successfully:", data);
+    } else {
+      console.error("Failed to connect to WordPress:", data);
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error during WordPress connection:", error);
   }
 };
