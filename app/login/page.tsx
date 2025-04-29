@@ -59,7 +59,7 @@ export default function Login() {
         setError(response?.message || "Login failed. Please try again.");
       }
     } catch (err) {
-      setError("Login failed due to unexpected error.");
+      setError("User does not exist. Please register first.");
       console.error(err);
     }
 
