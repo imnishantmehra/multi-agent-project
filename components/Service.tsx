@@ -608,7 +608,7 @@ export const loginUser = async ({
     console.error("Error during login:", error);
     return {
       status: "error",
-      message: "Login failed due to unexpected error.",
+      message: "User does not exist. Please register first.",
     };
   }
 };
