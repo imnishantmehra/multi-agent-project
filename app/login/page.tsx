@@ -112,7 +112,7 @@ export default function Login() {
 
         localStorage.setItem("username", formData.username);
         localStorage.setItem("email", formData.username);
-        setTimeout(() => router.push("/admin"), 1000);
+        setTimeout(() => router.push("/login"), 1000);
       } else {
         setError(response.message);
       }

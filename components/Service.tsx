@@ -540,7 +540,7 @@ export const verifyEmail = async ({
     const endpoint = "verify-email";
 
     const payload = {
-      email,
+      username: email,
       otp_code,
     };
 
