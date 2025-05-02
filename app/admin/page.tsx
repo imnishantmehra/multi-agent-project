@@ -6,7 +6,7 @@ import { Header } from "@/components/Header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2, Check } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
   plateformScriptAgent,
@@ -42,6 +42,7 @@ export default function AccountSettings() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingPlatform, setSavingPlatform] = useState<string | null>(null);
@@ -123,6 +124,7 @@ export default function AccountSettings() {
     platformData: PlatformConnection & { platform: string }
   ) => {
     setSavingPlatform(platformData.platform);
+    setSuccessMessage("");
     try {
       await regenerateContentAgent({
         agentName: platformData.platform.toLowerCase(),
@@ -136,10 +138,15 @@ export default function AccountSettings() {
         description: platformData.description || "",
         expectedOutput: platformData.expected_output || "",
       });
-
+      setSuccessMessage(
+        "Task updated successfully. Database re-initialized with latest definitions."
+      );
       setTimeout(() => {
         fetchAgentScripts();
       }, 5000);
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 4000);
     } catch (error) {
       console.error(
         "Error regenerating content for",
@@ -456,6 +463,12 @@ export default function AccountSettings() {
                             ? "Regenerating..."
                             : "Regenerate Script"}
                         </Button>
+                      )}
+                      {successMessage && (
+                        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-100 border border-green-500 text-green-700 px-4 py-2 rounded-lg shadow-lg flex items-center">
+                          <Check className="w-4 h-4 mr-2" />
+                          {successMessage}
+                        </div>
                       )}
                     </div>
                   </CardContent>
