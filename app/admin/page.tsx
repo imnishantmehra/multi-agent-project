@@ -51,14 +51,14 @@ export default function AccountSettings() {
 
   const handleInputChange = (
     platform: string,
-    field: keyof PlatformConnection,
+    key: keyof PlatformConnection,
     value: string
   ) => {
     setConnections((prev) => ({
       ...prev,
       [platform]: {
         ...prev[platform],
-        [field]: value,
+        [key]: value,
       },
     }));
   };
@@ -150,6 +150,13 @@ export default function AccountSettings() {
       setSavingPlatform(null);
     }
   };
+
+  useEffect(() => {
+    const initialConnections = Object.fromEntries(
+      mergedData.map((item) => [item.platform, item])
+    );
+    setConnections(initialConnections);
+  }, [mergedData]);
 
   const handleLinkedInConnect = async () => {
     setLoading(true);
@@ -389,11 +396,11 @@ export default function AccountSettings() {
             <h2 className="text-2xl font-semibold mb-4">Script Regenerator</h2>
             <Separator className="my-4" />
             <div className="grid gap-6 md:grid-cols-2">
-              {mergedData.map((platformData) => (
-                <Card key={platformData.platform}>
+              {Object.entries(connections).map(([platform, platformData]) => (
+                <Card key={platform}>
                   <CardHeader>
                     <CardTitle className="text-base font-medium">
-                      <strong>{platformData.platform}</strong>
+                      <strong>{platform}</strong>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -410,11 +417,14 @@ export default function AccountSettings() {
                               {label}
                             </h3>
                             <textarea
-                              id={`${platformData.platform}-${key}`}
-                              value={value || ""}
+                              id={`${platform}-${key}`}
+                              value={
+                                platformData[key as keyof PlatformConnection] ||
+                                ""
+                              }
                               onChange={(e) =>
                                 handleInputChange(
-                                  platformData.platform,
+                                  platform,
                                   key as keyof PlatformConnection,
                                   e.target.value
                                 )
@@ -434,10 +444,15 @@ export default function AccountSettings() {
                       ) : (
                         <Button
                           className="w-full bg-[#3d545f] text-white hover:bg-[#3d545f]/90"
-                          onClick={() => handleRegenerate(platformData)}
-                          disabled={savingPlatform === platformData.platform}
+                          onClick={() =>
+                            handleRegenerate({
+                              ...platformData,
+                              platform: platform,
+                            })
+                          }
+                          disabled={savingPlatform === platform}
                         >
-                          {savingPlatform === platformData.platform
+                          {savingPlatform === platform
                             ? "Regenerating..."
                             : "Regenerate Script"}
                         </Button>
