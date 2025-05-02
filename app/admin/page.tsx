@@ -353,7 +353,7 @@ export default function AccountSettings() {
                         <input
                           type="password"
                           className="border rounded p-2 w-full"
-                          placeholder="Password"
+                          placeholder="App Password"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                         />
