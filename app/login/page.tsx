@@ -54,7 +54,7 @@ export default function Login() {
         localStorage.setItem("token", response.token);
         localStorage.setItem("username", formData.username);
         localStorage.setItem("email", formData.username);
-        setTimeout(() => router.push("/admin"), 1000);
+        setTimeout(() => router.push("/account-settings"), 1000);
       } else {
         setError(response?.message || "Login failed. Please try again.");
       }

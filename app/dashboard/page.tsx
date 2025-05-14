@@ -157,34 +157,21 @@ export default function Dashboard() {
           const newSubTopics: string[][] = [];
 
           Object.keys(extractedContent).forEach((weekKey) => {
-            const weekContent = extractedContent[weekKey];
+            const weekData = extractedContent[weekKey];
 
-            let mainIdea = weekContent?.week || `Main Idea for ${weekKey}`;
-            const contentByDays = weekContent?.content_by_days || {};
+            const weekHeader = `Week: ${weekData.week}\nTopic: ${weekData.topic}\nQuote: “${weekData.quote}”`;
+            newMainIdeas.push(weekHeader);
 
-            for (const dayKey in contentByDays) {
-              const dayContent = contentByDays[dayKey];
-              const firstText = dayContent[0]?.text || "";
+            const dayEntries = weekData.content_by_days || {};
+            const daysFormatted: string[] = [];
 
-              const mainIdeaFromText = firstText.split("\n")[0].trim();
-              if (mainIdeaFromText) {
-                mainIdea = mainIdeaFromText;
-              }
-              break;
-            }
-
-            newMainIdeas.push(mainIdea);
-
-            const dayTopics: string[] = [];
-            Object.keys(contentByDays).forEach((dayKey) => {
-              const dayContent = contentByDays[dayKey];
-              const dayText = dayContent[0]?.text || "";
-
-              const subTopic = dayText.split("\n").slice(1).join(" ").trim();
-              dayTopics.push(subTopic || `No content for ${dayKey}`);
+            Object.keys(dayEntries).forEach((dayKey) => {
+              const dayData = dayEntries[dayKey];
+              const dayText = `${dayData.day}:\n  Subtopic: ${dayData.subtopic}\n  Quote: “${dayData.quote}”`;
+              daysFormatted.push(dayText);
             });
 
-            newSubTopics.push(dayTopics);
+            newSubTopics.push(daysFormatted);
           });
 
           setMainIdeas(newMainIdeas);
@@ -449,29 +436,24 @@ export default function Dashboard() {
         Object.keys(extractedContent).forEach((weekKey) => {
           const weekContent = extractedContent[weekKey];
 
-          let mainIdea = weekContent?.week || `Main Idea for ${weekKey}`;
-          const contentByDays = weekContent?.content_by_days || {};
+          const weekTitle = weekContent?.week || weekKey;
+          const topic = weekContent?.topic || "";
+          const weekQuote = weekContent?.quote || "";
 
-          for (const dayKey in contentByDays) {
-            const dayContent = contentByDays[dayKey];
-            const firstText = dayContent[0]?.text || "";
-
-            const mainIdeaFromText = firstText.split("\n")[0].trim();
-            if (mainIdeaFromText) {
-              mainIdea = mainIdeaFromText;
-            }
-            break;
-          }
-
+          const mainIdea = `${weekTitle}: ${topic}\n"${weekQuote}"`;
           newMainIdeas.push(mainIdea);
 
+          const contentByDays = weekContent?.content_by_days || {};
           const dayTopics: string[] = [];
+
           Object.keys(contentByDays).forEach((dayKey) => {
             const dayContent = contentByDays[dayKey];
-            const dayText = dayContent[0]?.text || "";
+            const dayName = dayContent?.day || dayKey;
+            const subtopic = dayContent?.subtopic || "";
+            const dayQuote = dayContent?.quote || "";
 
-            const subTopic = dayText.split("\n").slice(1).join(" ").trim();
-            dayTopics.push(subTopic || `No content for ${dayKey}`);
+            const subTopicFormatted = `${dayName}: ${subtopic}\n"${dayQuote}"`;
+            dayTopics.push(subTopicFormatted);
           });
 
           newSubTopics.push(dayTopics);
@@ -501,12 +483,9 @@ export default function Dashboard() {
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-[#7A99A8]">
-        {/* <Header username="John Doe" /> */}
         <Header />
         <main className="p-6 max-w-7xl mx-auto space-y-6">
-          <h1 className="text-4xl font-extrabold text-white">
-            Admin Dashboard
-          </h1>
+          <h1 className="text-4xl font-extrabold text-white">Plan Dashboard</h1>
 
           <Card className="w-full">
             <Collapsible open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>

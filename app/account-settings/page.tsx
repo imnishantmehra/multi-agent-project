@@ -9,6 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronLeft, RotateCw, Check } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import {
+  linkedinConnect,
+  twitterConnect,
+  wordpressConnect,
+} from "@/components/Service";
 
 interface PlatformConnection {
   apiKey?: string;
@@ -34,15 +39,10 @@ const ALL_PLATFORMS = [...MODEL_PLATFORMS, ...SOCIAL_PLATFORMS];
 export default function AccountSettings() {
   const [connections, setConnections] = useState<
     Record<string, PlatformConnection>
-  >(
-    ALL_PLATFORMS.reduce(
-      (acc, platform) => ({
-        ...acc,
-        [platform]: {},
-      }),
-      {}
-    )
-  );
+  >({});
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [savingPlatform, setSavingPlatform] = useState<string | null>(null);
   const [savedPlatform, setSavedPlatform] = useState<string | null>(null);
   const [activePlatforms, setActivePlatforms] = useState<
@@ -56,6 +56,169 @@ export default function AccountSettings() {
       {}
     )
   );
+
+  const [mergedData, setMergedData] = useState<
+    (PlatformConnection & { platform: string })[]
+  >([]);
+  const [siteUrl, setSiteUrl] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [linkedinConnected, setLinkedinConnected] = useState(false);
+  const [twitterConnected, setTwitterConnected] = useState(false);
+  const [wordpressConnected, setWordpressConnected] = useState(false);
+
+  const [linkedinSuccessMessage, setLinkedinSuccessMessage] = useState<
+    string | null
+  >(null);
+  const [twitterSuccessMessage, setTwitterSuccessMessage] = useState<
+    string | null
+  >(null);
+  const [wordpressSuccessMessage, setWordpressSuccessMessage] = useState<
+    string | null
+  >(null);
+
+  const [wordpressConnecting, setWordpressConnecting] = useState(false);
+
+  useEffect(() => {
+    const initialConnections = Object.fromEntries(
+      mergedData.map((item) => [item.platform, item])
+    );
+    setConnections(initialConnections);
+  }, [mergedData]);
+
+  const handleLinkedInConnect = async () => {
+    setLoading(true);
+    try {
+      const result = await linkedinConnect();
+      if (result && result.success) {
+        setLinkedinConnected(true);
+        setLinkedinSuccessMessage("LinkedIn connected successfully!");
+        localStorage.setItem("linkedin_connected", "true");
+        setTimeout(() => setLinkedinSuccessMessage(null), 5000);
+      } else {
+        setLinkedinSuccessMessage("LinkedIn connection failed.");
+      }
+    } catch (e) {
+      console.error("LinkedIn connection failed:", e);
+      setLinkedinSuccessMessage("Error connecting to LinkedIn.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTwitterConnect = async () => {
+    setLoading(true);
+    try {
+      const result = await twitterConnect();
+      if (result && result.success) {
+        setTwitterConnected(true);
+        setTwitterSuccessMessage("Twitter connected successfully!");
+        localStorage.setItem("twitter_connected", "true");
+        setTimeout(() => setTwitterSuccessMessage(null), 5000);
+      } else {
+        setTwitterSuccessMessage("Twitter connection failed.");
+      }
+    } catch (e) {
+      console.error("Twitter connection failed:", e);
+      setTwitterSuccessMessage("Error connecting to Twitter.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleWordpressConnect = async () => {
+    setLoading(true);
+    try {
+      const result = await wordpressConnect(siteUrl, username, password);
+      if (result && result.message === "WordPress connected successfully") {
+        setWordpressConnected(true);
+        setWordpressSuccessMessage(result.message);
+        localStorage.setItem("wordpress_connected", "true");
+        setWordpressConnecting(false);
+      } else {
+        setWordpressSuccessMessage("Connection failed. Try again.");
+      }
+    } catch (error) {
+      console.error("WordPress connection failed:", error);
+      setWordpressSuccessMessage("Error connecting to WordPress.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLinkedInDisconnect = () => {
+    setLinkedinConnected(false);
+    setLinkedinSuccessMessage(null);
+    localStorage.removeItem("linkedin_connected");
+  };
+
+  const handleTwitterDisconnect = () => {
+    setTwitterConnected(false);
+    setTwitterSuccessMessage(null);
+    localStorage.removeItem("twitter_connected");
+  };
+
+  const handleWordpressDisconnect = () => {
+    setWordpressConnected(false);
+    setWordpressSuccessMessage(null);
+    localStorage.removeItem("wordpress_connected");
+    setSiteUrl("");
+    setUsername("");
+    setPassword("");
+  };
+
+  useEffect(() => {
+    // Check initial connection status from localStorage only
+    const linkedinStored = localStorage.getItem("linkedin_connected");
+    const twitterStored = localStorage.getItem("twitter_connected");
+    const wordpressStored = localStorage.getItem("wordpress_connected");
+
+    if (linkedinStored === "true") setLinkedinConnected(true);
+    if (twitterStored === "true") setTwitterConnected(true);
+    if (wordpressStored === "true") setWordpressConnected(true);
+  }, []);
+
+  useEffect(() => {
+    // Handle URL parameters for connection callbacks
+    const params = new URLSearchParams(window.location.search);
+
+    const handleConnectionCallback = (
+      key: string,
+      setState: (val: boolean) => void,
+      setSuccessMessage: (msg: string | null) => void
+    ) => {
+      if (params.get(`${key}_connected`) === "true") {
+        localStorage.setItem(`${key}_connected`, "true");
+        setState(true);
+        setSuccessMessage(
+          `${
+            key.charAt(0).toUpperCase() + key.slice(1)
+          } connected successfully!`
+        );
+        setTimeout(() => setSuccessMessage(null), 5000);
+
+        params.delete(`${key}_connected`);
+        window.history.replaceState({}, "", `${window.location.pathname}`);
+      }
+    };
+
+    handleConnectionCallback(
+      "linkedin",
+      setLinkedinConnected,
+      setLinkedinSuccessMessage
+    );
+    handleConnectionCallback(
+      "twitter",
+      setTwitterConnected,
+      setTwitterSuccessMessage
+    );
+    handleConnectionCallback(
+      "wordpress",
+      setWordpressConnected,
+      setWordpressSuccessMessage
+    );
+  }, []);
 
   const handleInputChange = (
     platform: string,
@@ -82,7 +245,6 @@ export default function AccountSettings() {
     if (!activePlatforms[platform]) return;
     setSavingPlatform(platform);
     console.log(`Saving connection for ${platform}:`, connections[platform]);
-    // TODO: Implement actual save logic here
     await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulating API call
     setSavingPlatform(null);
     setSavedPlatform(platform);
@@ -160,7 +322,7 @@ export default function AccountSettings() {
                 id={`${platform}-${key}`}
                 type="password"
                 value={
-                  connections[platform][key as keyof PlatformConnection] || ""
+                  connections[platform]?.[key as keyof PlatformConnection] || ""
                 }
                 onChange={(e) =>
                   handleInputChange(
@@ -203,7 +365,6 @@ export default function AccountSettings() {
 
   return (
     <div className="min-h-screen bg-[#7A99A8]">
-      {/* <Header username="John Doe" /> */}
       <Header />
       <main className="container max-w-6xl mx-auto p-6 space-y-6">
         <div className="flex items-center space-x-4">
@@ -221,20 +382,131 @@ export default function AccountSettings() {
 
         <div className="space-y-10">
           <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-2xl font-semibold mb-4">Model Credentials</h2>
-            <Separator className="my-4" />
-            <div className="grid gap-6 md:grid-cols-2">
-              {MODEL_PLATFORMS.map(renderPlatformCard)}
+            <h2 className="text-2xl font-semibold mb-4">
+              Connect to Social Media Platform
+            </h2>
+
+            <div className="flex flex-wrap gap-6">
+              <Card className="flex-1 pt-6">
+                <CardContent className="space-y-4">
+                  <Button
+                    className="w-full bg-[#3d545f] text-white hover:bg-[#3d545f]/90"
+                    onClick={
+                      linkedinConnected
+                        ? handleLinkedInDisconnect
+                        : handleLinkedInConnect
+                    }
+                    disabled={loading}
+                  >
+                    {linkedinConnected
+                      ? "Disconnect LinkedIn"
+                      : "Connect to LinkedIn"}
+                  </Button>
+                  {linkedinSuccessMessage && (
+                    <div className="text-green-600">
+                      {linkedinSuccessMessage}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="flex-1 pt-6">
+                <CardContent className="space-y-4">
+                  <Button
+                    className="w-full bg-[#3d545f] text-white hover:bg-[#3d545f]/90"
+                    onClick={
+                      twitterConnected
+                        ? handleTwitterDisconnect
+                        : handleTwitterConnect
+                    }
+                    disabled={loading}
+                  >
+                    {twitterConnected
+                      ? "Disconnect Twitter"
+                      : "Connect to Twitter"}
+                  </Button>
+                  {twitterSuccessMessage && (
+                    <div className="text-green-600">
+                      {twitterSuccessMessage}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="flex-1 pt-6">
+                <CardContent className="space-y-4">
+                  {!wordpressConnected && !wordpressConnecting && (
+                    <Button
+                      className="w-full bg-[#3d545f] text-white hover:bg-[#3d545f]/90"
+                      onClick={() => setWordpressConnecting(true)}
+                    >
+                      Connect to WordPress
+                    </Button>
+                  )}
+
+                  {wordpressConnecting && !wordpressConnected && (
+                    <>
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          className="border rounded p-2 w-full"
+                          placeholder="WordPress Site URL"
+                          value={siteUrl}
+                          onChange={(e) => setSiteUrl(e.target.value)}
+                        />
+                        <input
+                          type="text"
+                          className="border rounded p-2 w-full"
+                          placeholder="Username"
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value)}
+                        />
+                        <input
+                          type="password"
+                          className="border rounded p-2 w-full"
+                          placeholder="App Password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                        />
+                      </div>
+
+                      <Button
+                        className="w-full bg-[#3d545f] text-white hover:bg-[#3d545f]/90 mt-4"
+                        onClick={handleWordpressConnect}
+                        disabled={loading}
+                      >
+                        {loading
+                          ? "Connecting... to WordPress"
+                          : "Connect to WordPress"}
+                      </Button>
+                    </>
+                  )}
+
+                  {wordpressConnected && (
+                    <>
+                      <Button
+                        className="w-full bg-[#3d545f] text-white hover:bg-[#3d545f]/90"
+                        onClick={handleWordpressDisconnect}
+                      >
+                        Disconnect WordPress
+                      </Button>
+                      {wordpressSuccessMessage && (
+                        <div className="text-green-600 mt-2">
+                          {wordpressSuccessMessage}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-2xl font-semibold mb-4">
-              Platform Credentials
-            </h2>
+            <h2 className="text-2xl font-semibold mb-4">Model Credentials</h2>
             <Separator className="my-4" />
             <div className="grid gap-6 md:grid-cols-2">
-              {SOCIAL_PLATFORMS.map(renderPlatformCard)}
+              {MODEL_PLATFORMS.map(renderPlatformCard)}
             </div>
           </div>
         </div>

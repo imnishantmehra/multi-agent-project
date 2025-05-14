@@ -20,8 +20,6 @@ export function Header() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     const storedUsername = localStorage.getItem("username");
-    // console.log("Token:", token);
-    // console.log("Username:", storedUsername);
 
     if (token) {
       setIsLoggedIn(true);
@@ -63,7 +61,7 @@ export function Header() {
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="flex items-center space-x-2">
+          <Button variant="ghost" className="flex items-center gap-1">
             <UserCircle className="h-5 w-5" />
             <span>{isLoggedIn && username ? username : "Login"}</span>
             <ChevronDown className="h-4 w-4" />
@@ -76,7 +74,7 @@ export function Header() {
                 {/* <Link href="/account-settings" className="w-full">
                   My Account Settings
                 </Link> */}
-                <Link href="/admin" className="w-full">
+                <Link href="/account-settings" className="w-full">
                   Admin Settings
                 </Link>
               </DropdownMenuItem>

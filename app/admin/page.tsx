@@ -27,6 +27,18 @@ interface PlatformConnection {
 }
 
 const PLATFORMS_SCRIPT_REGENERATOR = [
+  // "Script_Research",
+  // "QC",
+  // "Script_Rewriter",
+  // "Regenrate_Content",
+  // "Regenrate_Subcontent",
+  "Instagram",
+  "Facebook",
+  "YouTube",
+  "Twitter",
+  "LinkedIn",
+  "WordPress",
+  "TikTok",
   "Script_Research",
   "QC",
   "Script_Rewriter",
@@ -282,13 +294,13 @@ export default function AccountSettings() {
 
         <div className="space-y-10">
           {/* Connect to platforms */}
-          <div className="bg-white p-6 rounded-lg shadow">
+          {/* <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-2xl font-semibold mb-4">
               Connect to Social Media Platform
             </h2>
 
             <div className="flex flex-wrap gap-6">
-              {/* LinkedIn */}
+              
               <Card className="flex-1 pt-6">
                 <CardContent className="space-y-4">
                   <Button
@@ -308,7 +320,7 @@ export default function AccountSettings() {
                 </CardContent>
               </Card>
 
-              {/* Twitter */}
+              
               <Card className="flex-1 pt-6">
                 <CardContent className="space-y-4">
                   <Button
@@ -328,7 +340,7 @@ export default function AccountSettings() {
                 </CardContent>
               </Card>
 
-              {/* WordPress */}
+              
               <Card className="flex-1 pt-6">
                 <CardContent className="space-y-4">
                   {!wordpressConnected && !wordpressConnecting && (
@@ -396,7 +408,7 @@ export default function AccountSettings() {
                 </CardContent>
               </Card>
             </div>
-          </div>
+          </div> */}
 
           {/* Script Regenerator */}
           <div className="bg-white p-6 rounded-lg shadow">
